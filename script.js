@@ -20,7 +20,7 @@ loadingManager.onStart = function (url, itemsLoaded, itemsTotal) {
     // console.log('Start time : ', startTime);
     // console.log('Started loading files.');
     setTimeout(() => {
-        progressText.innerText = 'Loading...';
+        progressText.innerText = 'Loading Assets...';
     }, 100);
 };
 
@@ -29,9 +29,12 @@ loadingManager.onLoad = function () {
     // console.log('End time : ', Date.now());
     // console.log('Total time : ' + (Date.now() - startTime) + ' ms');
     // console.log('Loading complete!');
-    progressText.innerText = 'About to load...';
+    progressText.innerText = 'Constructing Experience...';
     setTimeout(() => {
         progressContainer.style.display = 'none';
+        setTimeout(() => {
+            document.querySelector('.model-credit').style.display = 'none';
+        }, 2000);
     }, 50);
 };
 
