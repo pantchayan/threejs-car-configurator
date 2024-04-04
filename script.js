@@ -6,16 +6,53 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-
 import GUI from 'https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm';
+
+//
+// Loading Manager
+//
+const progressText = document.querySelector('label.progress-bar');
+const progressContainer = document.querySelector('div.progress-bar-container');
+const progressBar = document.querySelector('progress#progress-bar');
+let loadingManager = new THREE.LoadingManager();
+let startTime = Date.now();
+loadingManager.onStart = function (url, itemsLoaded, itemsTotal) {
+    console.log('Start time : ', startTime);
+    console.log('Started loading files.');
+    setTimeout(() => {
+        progressText.innerText = 'Loading...';
+    }, 100);
+};
+
+loadingManager.onLoad = function () {
+
+    console.log('End time : ', Date.now());
+    console.log('Total time : ' + (Date.now() - startTime) + ' ms');
+    console.log('Loading complete!');
+    progressText.innerText = 'About to load...';
+    setTimeout(() => {
+        progressContainer.style.display = 'none';
+    }, 50);
+};
+
+loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+    // console.log('Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
+    let progressPercentage = Math.round(itemsLoaded / itemsTotal * 100);
+    progressBar.value = progressPercentage / 100 - 0.02;
+    console.log(progressPercentage, progressBar.value);
+};
+
+loadingManager.onError = function (url) {
+    console.log('There was an error loading ' + url);
+};
+
 
 //
 // Assets 
 //
-const gltfLoader = new GLTFLoader();
-const rgbeLoader = new RGBELoader();
-const textureLoader = new THREE.TextureLoader();
+const gltfLoader = new GLTFLoader(loadingManager);
+const rgbeLoader = new RGBELoader(loadingManager);
+const textureLoader = new THREE.TextureLoader(loadingManager);
 
 let woodAOTexture = textureLoader.load('./static/textures/wood/wood_ao_2k.jpg');
 
@@ -38,7 +75,7 @@ let loadAssetsSync = async () => {
     let envMap = await rgbeLoader.loadAsync('./static/envmaps/parking_garage_4k.hdr');
     await delay(1000)
     let gltf = await gltfLoader.loadAsync('./static/models/Car/mcLaren-car-model.glb');
-    console.log('All assets loaded synchronously', clock.getElapsedTime());
+    // console.log('All assets loaded synchronously', clock.getElapsedTime());
 
     // onLoadAssets(envMap, gltf);
 }
@@ -52,7 +89,7 @@ let loadAssets = async () => {
         ]);
 
 
-    console.log('All assets loaded asynchronously', clock.getElapsedTime());
+    // console.log('All assets loaded asynchronously', clock.getElapsedTime());
     woodenCarModel = woodenGltf.scene;
     woodenCarModel.traverse((child) => {
         if (child.isMesh) {
@@ -67,12 +104,12 @@ let loadAssets = async () => {
 let onLoadAssets = (hdr, gltf) => {
     carModel = gltf.scene;
 
-    console.log(carModel.position, woodenCarModel.position)
+    // console.log(carModel.position, woodenCarModel.position)
     parkingEnvMap = hdr;
 
     parkingEnvMap.mapping = THREE.EquirectangularReflectionMapping;
     scene.backgroundBlurriness = 0.2;
-    scene.backgroundIntensity = 0.5;
+    scene.backgroundIntensity = 0.05;
     scene.background = parkingEnvMap;
 
 
@@ -80,7 +117,7 @@ let onLoadAssets = (hdr, gltf) => {
 
 
     updateCarMaterials();
-    console.log(clock.getElapsedTime())
+    // console.log(clock.getElapsedTime())
 }
 
 let updateCarMaterials = () => {
@@ -91,9 +128,14 @@ let updateCarMaterials = () => {
             child.castShadow = true;
 
             carModel.receiveShadow = true;
-            // apply custom material
-            child.material.envMap = parkingEnvMap;
 
+            if (objDebug.toggleCarEnvMap) {
+                child.material.envMap = parkingEnvMap;
+                child.material.envMapIntensity = objDebug.envMapIntensity;
+            }
+            else {
+                child.material.envMap = null;
+            }
             // console.log(child.userData.name)
             if (child.userData.name.includes('Carpaint') && !child.userData.name.includes('Black') && !child.userData.name.includes('Wiper')) {
                 child.material.color.set(objDebug.carColor)
@@ -128,7 +170,7 @@ let switchCarMaterials = () => {
                 child.visible = false;
             }
         })
-        console.log(scene.children.length, woodenCarModel, carModel)
+        // console.log(scene.children.length, woodenCarModel, carModel)
         carWoody = !carWoody;
         updateCarMaterials();
         return;
@@ -148,7 +190,13 @@ let switchCarMaterials = () => {
             child.visible = true;
             child.receiveShadow = true;
             // apply custom material
-            child.material.envMap = parkingEnvMap;
+            if (objDebug.toggleCarEnvMap) {
+                child.material.envMap = parkingEnvMap;
+                child.material.envMapIntensity = objDebug.envMapIntensity;
+            }
+            else {
+                child.material.envMap = null;
+            }
 
             // console.log(child.userData.name)
             if (child.userData.name.includes('Carpaint') && !child.userData.name.includes('Black') && !child.userData.name.includes('Wiper')) {
@@ -218,7 +266,7 @@ let scene = new THREE.Scene();
 //
 // Object
 //
-let planeGeometry = new THREE.PlaneGeometry(10, 10);
+let planeGeometry = new THREE.PlaneGeometry(100, 100);
 let planeMaterial = new THREE.MeshStandardMaterial({ color: '#c2c2c2' });
 planeMaterial.metalness = 0.7;
 planeMaterial.roughness = 0.5;
@@ -268,6 +316,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 let controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.01;
+controls.maxPolarAngle = Math.PI / 2 - 0.02;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.8;
 
 //
 // DEBUG UI
@@ -281,18 +332,26 @@ let objDebug = {
     carClearcoat: 0.0,
     carClearcoatRoughness: 0.5,
     switchCarTexture: switchCarMaterials,
-    enableShadows: true
+    toggleShadows: true,
+    toggleCarEnvMap: true,
+    envMapIntensity: 0.1,
+    sceneBackgroundIntensity: 0.05
 }
 
 const gui = new GUI();
+const carMaterialFolder = gui.addFolder('Modify Car Materials');
+const lightControlFolder = gui.addFolder('Change Lighting');
 
-gui
+carMaterialFolder.close();
+lightControlFolder.close();
+
+carMaterialFolder
     .addColor(objDebug, 'carColor')
     .onChange(() => {
         updateCarMaterials();
     })
 
-gui
+carMaterialFolder
     .add(objDebug, 'carMetalness')
     .min(0)
     .max(1)
@@ -301,7 +360,7 @@ gui
         updateCarMaterials();
     })
 
-gui
+carMaterialFolder
     .add(objDebug, 'carRoughness')
     .min(0)
     .max(1)
@@ -310,7 +369,7 @@ gui
         updateCarMaterials();
     })
 
-gui
+carMaterialFolder
     .add(objDebug, 'carClearcoat')
     .min(0)
     .max(1)
@@ -319,7 +378,7 @@ gui
         updateCarMaterials();
     })
 
-gui
+carMaterialFolder
     .add(objDebug, 'carClearcoatRoughness')
     .min(0)
     .max(1)
@@ -328,28 +387,55 @@ gui
         updateCarMaterials();
     })
 
-gui
+carMaterialFolder
     .addColor(objDebug, 'rimColor')
     .onChange(() => {
         updateCarMaterials();
     })
 
-gui
+carMaterialFolder
     .addColor(objDebug, 'caliperColor')
     .onChange(() => {
         updateCarMaterials();
     })
 
-gui.add(objDebug, 'switchCarTexture')
-gui.add(objDebug, 'enableShadows').onChange(() => {
-    if(objDebug.enableShadows){
-        renderer.shadowMap.enabled = true;
-    }
-    else{
-        renderer.shadowMap.enabled = false;
-    }
-})
+carMaterialFolder.add(objDebug, 'switchCarTexture')
 
+lightControlFolder
+    .add(objDebug, 'toggleShadows')
+    .name('Toggle Shadow')
+    .onChange(() => {
+        if (objDebug.toggleShadows) {
+            renderer.shadowMap.enabled = true;
+        }
+        else {
+            renderer.shadowMap.enabled = false;
+        }
+    })
+
+lightControlFolder
+    .add(objDebug, 'toggleCarEnvMap')
+    .name('Environment Lighting')
+    .onChange(updateCarMaterials)
+
+
+lightControlFolder
+    .add(objDebug, 'envMapIntensity')
+    .name('Environment Lighting Intensity')
+    .min(0)
+    .max(1)
+    .step(0.001)
+    .onChange(updateCarMaterials)
+
+lightControlFolder
+    .add(objDebug, 'sceneBackgroundIntensity')
+    .name('Scene Background Intensity')
+    .min(0)
+    .max(1)
+    .step(0.001)
+    .onChange(() => {
+        scene.backgroundIntensity = objDebug.sceneBackgroundIntensity;
+    })
 
 // 
 // RESIZE HANDLER
@@ -382,8 +468,8 @@ window.addEventListener('mousemove', (event) => {
 let animation = () => {
     let elapsedTime = clock.getElapsedTime();
 
-    pointLight.position.x = Math.sin(elapsedTime) * 1.5
-    pointLight.position.z = Math.cos(elapsedTime) * 1.5
+    pointLight.position.x = Math.sin(elapsedTime * 0.3) * 1.5
+    pointLight.position.z = - Math.cos(elapsedTime * 0.3) * 1.5
     controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(animation);
