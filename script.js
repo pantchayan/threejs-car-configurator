@@ -17,8 +17,8 @@ const progressBar = document.querySelector('progress#progress-bar');
 let loadingManager = new THREE.LoadingManager();
 let startTime = Date.now();
 loadingManager.onStart = function (url, itemsLoaded, itemsTotal) {
-    console.log('Start time : ', startTime);
-    console.log('Started loading files.');
+    // console.log('Start time : ', startTime);
+    // console.log('Started loading files.');
     setTimeout(() => {
         progressText.innerText = 'Loading...';
     }, 100);
@@ -26,9 +26,9 @@ loadingManager.onStart = function (url, itemsLoaded, itemsTotal) {
 
 loadingManager.onLoad = function () {
 
-    console.log('End time : ', Date.now());
-    console.log('Total time : ' + (Date.now() - startTime) + ' ms');
-    console.log('Loading complete!');
+    // console.log('End time : ', Date.now());
+    // console.log('Total time : ' + (Date.now() - startTime) + ' ms');
+    // console.log('Loading complete!');
     progressText.innerText = 'About to load...';
     setTimeout(() => {
         progressContainer.style.display = 'none';
@@ -39,7 +39,7 @@ loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
     // console.log('Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
     let progressPercentage = Math.round(itemsLoaded / itemsTotal * 100);
     progressBar.value = progressPercentage / 100 - 0.02;
-    console.log(progressPercentage, progressBar.value);
+    // console.log(progressPercentage, progressBar.value);
 };
 
 loadingManager.onError = function (url) {
@@ -304,7 +304,7 @@ scene.add(camera);
 //
 // Renderer
 //
-let renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+let renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(sizes.width, sizes.height)
 renderer.render(scene, camera);
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
@@ -335,7 +335,15 @@ let objDebug = {
     toggleShadows: true,
     toggleCarEnvMap: true,
     envMapIntensity: 0.1,
-    sceneBackgroundIntensity: 0.05
+    sceneBackgroundIntensity: 0.05,
+    downloadScreenshot: () => {
+        const image = canvas.toDataURL('image/png')
+        const a = document.createElement('a')
+        a.setAttribute('download', 'my-image.png')
+        a.setAttribute('href', image)
+        a.click()
+    },
+    cameraRotationSpeed: 0.8
 }
 
 const gui = new GUI();
@@ -347,12 +355,14 @@ lightControlFolder.close();
 
 carMaterialFolder
     .addColor(objDebug, 'carColor')
+    .name('Color')
     .onChange(() => {
         updateCarMaterials();
     })
 
 carMaterialFolder
     .add(objDebug, 'carMetalness')
+    .name('Metalness')
     .min(0)
     .max(1)
     .step(0.001)
@@ -362,6 +372,7 @@ carMaterialFolder
 
 carMaterialFolder
     .add(objDebug, 'carRoughness')
+    .name('Roughness')
     .min(0)
     .max(1)
     .step(0.001)
@@ -371,6 +382,7 @@ carMaterialFolder
 
 carMaterialFolder
     .add(objDebug, 'carClearcoat')
+    .name('Clearcoat')
     .min(0)
     .max(1)
     .step(0.001)
@@ -380,6 +392,7 @@ carMaterialFolder
 
 carMaterialFolder
     .add(objDebug, 'carClearcoatRoughness')
+    .name('Clearcoat Roughness')
     .min(0)
     .max(1)
     .step(0.001)
@@ -389,17 +402,19 @@ carMaterialFolder
 
 carMaterialFolder
     .addColor(objDebug, 'rimColor')
+    .name('Rim Color')
     .onChange(() => {
         updateCarMaterials();
     })
 
 carMaterialFolder
     .addColor(objDebug, 'caliperColor')
+    .name('Caliper Color')
     .onChange(() => {
         updateCarMaterials();
     })
 
-carMaterialFolder.add(objDebug, 'switchCarTexture')
+carMaterialFolder.add(objDebug, 'switchCarTexture').name("Toggle car's texture")
 
 lightControlFolder
     .add(objDebug, 'toggleShadows')
@@ -427,7 +442,7 @@ lightControlFolder
     .step(0.001)
     .onChange(updateCarMaterials)
 
-lightControlFolder
+gui
     .add(objDebug, 'sceneBackgroundIntensity')
     .name('Scene Background Intensity')
     .min(0)
@@ -435,6 +450,20 @@ lightControlFolder
     .step(0.001)
     .onChange(() => {
         scene.backgroundIntensity = objDebug.sceneBackgroundIntensity;
+    })
+
+gui
+    .add(objDebug, 'downloadScreenshot')
+    .name('Download as Image');
+
+gui
+    .add(objDebug, 'cameraRotationSpeed')
+    .name('Camera rotation speed')
+    .min(0)
+    .max(4)
+    .step(0.01)
+    .onChange(() => {
+        controls.autoRotateSpeed = objDebug.cameraRotationSpeed;
     })
 
 // 
